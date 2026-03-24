@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 import httpx
 import logging
 from app.config import get_settings
@@ -54,7 +56,7 @@ async def get_advisory(
     language: str = "en",
     district: str = "Unknown",
     state: str = "Unknown",
-    crops: list[str] | None = None,
+    crops: Optional[List[str]] = None,
     season: str = "Kharif",
     kb_context: str = "",
 ) -> str:

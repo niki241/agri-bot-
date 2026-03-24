@@ -1,3 +1,5 @@
+from typing import List, Optional, Tuple
+
 import logging
 from datetime import datetime
 from sqlalchemy import select
@@ -11,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 async def get_or_create_farmer(
     db: AsyncSession, phone: str, language: str = "te"
-) -> tuple[Farmer, bool]:
+) -> Tuple[Farmer, bool]:
     """
     Get existing farmer or create new one.
     Returns (farmer, is_new).
@@ -109,14 +111,14 @@ async def log_query(
     return log
 
 
-async def get_all_farmers(db: AsyncSession, limit: int = 100, offset: int = 0) -> list[Farmer]:
+async def get_all_farmers(db: AsyncSession, limit: int = 100, offset: int = 0) -> List[Farmer]:
     """Get all farmers (admin)."""
     stmt = select(Farmer).order_by(Farmer.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
 
-async def get_farmer_by_phone(db: AsyncSession, phone: str) -> Farmer | None:
+async def get_farmer_by_phone(db: AsyncSession, phone: str) -> Optional[Farmer]:
     """Get farmer by phone number."""
     stmt = select(Farmer).where(Farmer.phone == phone)
     result = await db.execute(stmt)
@@ -125,7 +127,7 @@ async def get_farmer_by_phone(db: AsyncSession, phone: str) -> Farmer | None:
 
 async def get_farmer_queries(
     db: AsyncSession, farmer_id: int, limit: int = 50
-) -> list[QueryLog]:
+) -> List[QueryLog]:
     """Get query history for a farmer."""
     stmt = (
         select(QueryLog)

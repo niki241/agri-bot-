@@ -1,3 +1,5 @@
+from typing import Dict, List, Optional
+
 import logging
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,8 +12,8 @@ async def search_advisories(
     db: AsyncSession,
     query: str,
     language: str = "en",
-    crop: str | None = None,
-) -> list[dict]:
+    crop: Optional[str] = None,
+) -> List[Dict]:
     """
     Search crop advisories in the knowledge base by keyword matching.
     Returns relevant advisories for grounding the LLM response.
@@ -53,7 +55,7 @@ async def search_advisories(
     return formatted
 
 
-def format_kb_context(advisories: list[dict]) -> str:
+def format_kb_context(advisories: List[Dict]) -> str:
     """Format KB results into a context string for the LLM prompt."""
     if not advisories:
         return ""

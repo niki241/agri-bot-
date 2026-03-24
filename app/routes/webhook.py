@@ -1,3 +1,5 @@
+from typing import Dict, List, Optional
+
 import time
 import logging
 from fastapi import APIRouter, Request, Query, BackgroundTasks, Depends, HTTPException
@@ -178,7 +180,7 @@ def _get_menu_text(language: str) -> str:
     return texts.get(language, texts["en"])
 
 
-def _get_menu_buttons(language: str) -> list[dict]:
+def _get_menu_buttons(language: str) -> List[dict]:
     buttons = {
         "te": [
             {"id": "crop_problem", "title": "🌱 పంట సమస్య"},
@@ -199,7 +201,7 @@ def _get_menu_buttons(language: str) -> list[dict]:
     return buttons.get(language, buttons["en"])
 
 
-def _get_weather_placeholder(language: str, district: str | None) -> str:
+def _get_weather_placeholder(language: str, district: Optional[str]) -> str:
     responses = {
         "te": f"🌤️ వాతావరణ సమాచారం త్వరలో అందుబాటులో ఉంటుంది.\n📍 జిల్లా: {district or 'తెలియదు'}\n\nమీ జిల్లా పేరు చెప్పండి.",
         "hi": f"🌤️ मौसम की जानकारी जल्द उपलब्ध होगी।\n📍 जिला: {district or 'अज्ञात'}\n\nअपने जिले का नाम बताएं।",

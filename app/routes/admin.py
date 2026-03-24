@@ -1,3 +1,5 @@
+from typing import Dict, List, Optional
+
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -17,18 +19,18 @@ router = APIRouter(prefix="/api", tags=["admin"])
 class FarmerOut(BaseModel):
     id: int
     phone: str
-    name: str | None
+    name: Optional[str]
     language: str
-    district: str | None
-    state: str | None
-    crops: list[str] | None
+    district: Optional[str]
+    state: Optional[str]
+    crops: Optional[List[str]]
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 
-@router.get("/farmers", response_model=list[FarmerOut])
+@router.get("/farmers", response_model=List[FarmerOut])
 async def list_farmers(
     limit: int = Query(100, le=500),
     offset: int = Query(0, ge=0),
@@ -52,17 +54,17 @@ class QueryLogOut(BaseModel):
     id: int
     query_text: str
     language_detected: str
-    intent: str | None
-    ai_response: str | None
-    response_time_ms: float | None
-    feedback: str | None
+    intent: Optional[str]
+    ai_response: Optional[str]
+    response_time_ms: Optional[float]
+    feedback: Optional[str]
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 
-@router.get("/farmers/{phone}/queries", response_model=list[QueryLogOut])
+@router.get("/farmers/{phone}/queries", response_model=List[QueryLogOut])
 async def get_farmer_query_history(
     phone: str,
     limit: int = Query(50, le=200),
@@ -83,10 +85,10 @@ class DashboardStats(BaseModel):
     total_queries: int
     queries_today: int
     avg_response_time_ms: float
-    language_split: dict[str, int]
-    intent_split: dict[str, int]
-    top_crops: list[dict]
-    recent_queries: list[dict]
+    language_split: Dict[str, int]
+    intent_split: Dict[str, int]
+    top_crops: List[dict]
+    recent_queries: List[dict]
 
 
 @router.get("/analytics/dashboard", response_model=DashboardStats)
@@ -173,9 +175,9 @@ async def dashboard_stats(db: AsyncSession = Depends(get_db)):
 
 class BroadcastRequest(BaseModel):
     message: str
-    language: str | None = None  # None = send to all
-    state: str | None = None
-    crop: str | None = None
+    language: Optional[str] = None  # None = send to all
+    state: Optional[str] = None
+    crop: Optional[str] = None
 
 
 class BroadcastResponse(BaseModel):

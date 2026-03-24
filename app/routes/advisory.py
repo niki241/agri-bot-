@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,10 +15,10 @@ router = APIRouter(prefix="/api/advisory", tags=["advisory"])
 
 class AdvisoryRequest(BaseModel):
     query: str
-    language: str | None = None
+    language: Optional[str] = None
     district: str = "Unknown"
     state: str = "Unknown"
-    crops: list[str] | None = None
+    crops: Optional[List[str]] = None
 
 
 class AdvisoryResponse(BaseModel):

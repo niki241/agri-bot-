@@ -1,3 +1,5 @@
+from typing import Dict, List, Optional
+
 import httpx
 import logging
 from app.config import get_settings
@@ -38,7 +40,7 @@ async def send_text_message(to: str, text: str) -> bool:
         return False
 
 
-async def send_interactive_buttons(to: str, body_text: str, buttons: list[dict]) -> bool:
+async def send_interactive_buttons(to: str, body_text: str, buttons: List[Dict]) -> bool:
     """
     Send an interactive button message.
     buttons: [{"id": "btn_1", "title": "Option 1"}, ...]
@@ -75,7 +77,7 @@ async def send_interactive_buttons(to: str, body_text: str, buttons: list[dict])
         return False
 
 
-def extract_message_data(payload: dict) -> dict | None:
+def extract_message_data(payload: dict) -> Optional[dict]:
     """
     Extract message data from WhatsApp webhook payload.
     Returns dict with keys: from_number, message_type, text, message_id
