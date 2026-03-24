@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,7 @@ from app.services.intent import classify_intent
 from app.services.ollama_client import get_advisory
 from app.services.knowledge_base import search_advisories, format_kb_context
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/advisory", tags=["advisory"])
 
 
@@ -47,9 +49,14 @@ async def query_advisory(
     # Classify intent
     intent = classify_intent(request.query, language)
 
-    # Search KB
-    advisories = await search_advisories(db, request.query, language)
-    kb_context = format_kb_context(advisories)
+    # Search KB (graceful fallback if DB is not configured)
+    advisories = []
+    kb_context = ""
+    try:
+        advisories = await search_advisories(db, request.query, language)
+        kb_context = format_kb_context(advisories)
+    except Exception as e:
+        logger.warning("KB search failed (DB may not be configured): %s", str(e))
 
     # Get AI response
     response = await get_advisory(

@@ -74,7 +74,7 @@ async def get_advisory(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 f"{settings.OLLAMA_BASE_URL}/api/generate",
                 json={
@@ -84,7 +84,7 @@ async def get_advisory(
                     "stream": False,
                     "options": {
                         "temperature": 0.3,
-                        "num_predict": 500,
+                        "num_predict": 300,
                         "top_p": 0.9,
                     },
                 },
