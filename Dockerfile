@@ -27,14 +27,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy application code
 COPY app/ ./app/
 COPY seed_data.py admin_dashboard.py ./
+COPY requirements.txt ./
 
 # Non-root user for security
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8000
+# Railway uses $PORT env var; default to 8000 for local docker
+ENV PORT=8000
+EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT}/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 2
