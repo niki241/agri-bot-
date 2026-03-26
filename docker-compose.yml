@@ -1,12 +1,13 @@
 version: "3.8"
 
 # =============================================================
-#  Kisan Mitra — Hostinger VPS Production Stack
-#  DB: Neon Postgres (external, no local DB container)
-#  LLM: Ollama (sidecar container)
-#  API: FastAPI (multi-stage build)
-#  Admin: Streamlit dashboard
-#  Proxy: Nginx for SSL + reverse proxy
+#  Kisan Mitra — Docker Compose
+#
+#  OPTION A: Railway (recommended — set LLM_PROVIDER=groq)
+#    Only the 'api' service is needed. Deploy via railway.toml.
+#
+#  OPTION B: Self-hosted VPS (set LLM_PROVIDER=ollama)
+#    Run all services: docker compose up -d
 # =============================================================
 
 services:
@@ -17,55 +18,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: kisan-mitra-api
+    ports:
+      - "8000:8000"
     env_file: .env
-    environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - APP_ENV=production
-    depends_on:
-      ollama:
-        condition: service_healthy
     restart: unless-stopped
-    networks:
-      - kisan-net
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-
-  # ---------- Ollama LLM ----------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kisan-mitra-ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - kisan-net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      start_period: 20s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-
-  # ---------- Model puller (one-shot init) ----------
-  ollama-pull:
-    image: curlimages/curl:latest
-    container_name: kisan-mitra-model-pull
-    depends_on:
-      ollama:
-        condition: service_healthy
-    entrypoint: >
-      sh -c "
-        echo 'Pulling llama3.1:8b model...' &&
-        curl -s -X POST http://ollama:11434/api/pull -d '{\"name\":\"llama3.1:8b\"}' &&
-        echo 'Model pull complete.'
-      "
-    restart: "no"
     networks:
       - kisan-net
 
@@ -75,6 +31,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: kisan-mitra-admin
+    ports:
+      - "8501:8501"
     env_file: .env
     environment:
       - API_BASE_URL=http://api:8000
@@ -88,30 +46,32 @@ services:
     restart: unless-stopped
     networks:
       - kisan-net
-    deploy:
-      resources:
-        limits:
-          memory: 256M
 
-  # ---------- Nginx reverse proxy ----------
-  nginx:
-    image: nginx:alpine
-    container_name: kisan-mitra-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - api
-      - admin
-    restart: unless-stopped
-    networks:
-      - kisan-net
+  # ---------- Ollama LLM (only for self-hosted VPS) ----------
+  # Uncomment below if using LLM_PROVIDER=ollama on a VPS
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: kisan-mitra-ollama
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - kisan-net
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     start_period: 20s
+  #     retries: 3
+  #
+  # Also add to api service:
+  #   environment:
+  #     - OLLAMA_BASE_URL=http://ollama:11434
+  #     - LLM_PROVIDER=ollama
 
-volumes:
-  ollama_data:
+# volumes:
+#   ollama_data:
 
 networks:
   kisan-net:

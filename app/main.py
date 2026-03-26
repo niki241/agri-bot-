@@ -7,7 +7,7 @@ from app.database import init_db
 from app.routes.webhook import router as webhook_router
 from app.routes.advisory import router as advisory_router
 from app.routes.admin import router as admin_router
-from app.services.ollama_client import check_ollama_health
+from app.services.ollama_client import check_llm_health
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,12 +25,15 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("✅ Database tables initialized")
 
-    # Check Ollama
-    ollama_ok = await check_ollama_health()
-    if ollama_ok:
+    # Check LLM providers
+    llm_status = await check_llm_health()
+    logger.info("LLM provider: %s", llm_status["provider"])
+    if llm_status["groq"]:
+        logger.info("✅ Groq API is available")
+    if llm_status["ollama"]:
         logger.info("✅ Ollama is available")
-    else:
-        logger.warning("⚠️ Ollama is NOT reachable — will use fallback responses")
+    if not llm_status["groq"] and not llm_status["ollama"]:
+        logger.warning("⚠️ No LLM provider reachable — will use fallback responses")
 
     yield
 
@@ -60,9 +63,11 @@ app.include_router(admin_router)
 
 @app.get("/health")
 async def health_check():
-    ollama_ok = await check_ollama_health()
+    llm_status = await check_llm_health()
     return {
         "status": "healthy",
         "service": "kisan-mitra",
-        "ollama": "connected" if ollama_ok else "disconnected",
+        "llm_provider": llm_status["provider"],
+        "groq": "connected" if llm_status["groq"] else "disconnected",
+        "ollama": "connected" if llm_status["ollama"] else "disconnected",
     }

@@ -61,7 +61,8 @@ async def get_advisory(
     kb_context: str = "",
 ) -> str:
     """
-    Get crop advisory from Ollama LLM.
+    Get crop advisory from the configured LLM provider.
+    Tries Groq first (cloud), falls back to Ollama (local), then static fallback.
     """
     system_prompt = SYSTEM_PROMPTS.get(language, SYSTEM_PROMPTS["en"])
     user_prompt = ADVISORY_TEMPLATE.format(
@@ -73,6 +74,54 @@ async def get_advisory(
         kb_context=f"Relevant knowledge base info:\n{kb_context}" if kb_context else "",
     )
 
+    provider = settings.LLM_PROVIDER.lower()
+
+    # --- Groq (primary for Railway / production) ---
+    if provider == "groq" and settings.GROQ_API_KEY:
+        result = await _call_groq(system_prompt, user_prompt)
+        if result:
+            return result
+        logger.warning("Groq failed, trying Ollama fallback...")
+
+    # --- Ollama (local dev / self-hosted fallback) ---
+    result = await _call_ollama(system_prompt, user_prompt)
+    if result:
+        return result
+
+    return _get_fallback_response(language)
+
+
+async def _call_groq(system_prompt: str, user_prompt: str) -> Optional[str]:
+    """Call Groq API (OpenAI-compatible chat completions)."""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.GROQ_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 400,
+                    "top_p": 0.9,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        logger.error("Groq API error: %s", str(e))
+        return None
+
+
+async def _call_ollama(system_prompt: str, user_prompt: str) -> Optional[str]:
+    """Call local Ollama instance."""
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
@@ -92,20 +141,19 @@ async def get_advisory(
             response.raise_for_status()
             data = response.json()
             return data.get("response", "").strip()
-
     except httpx.ConnectError:
-        logger.error("Ollama is not reachable at %s", settings.OLLAMA_BASE_URL)
-        return _get_fallback_response(language)
+        logger.warning("Ollama not reachable at %s", settings.OLLAMA_BASE_URL)
+        return None
     except httpx.TimeoutException:
-        logger.error("Ollama request timed out")
-        return _get_fallback_response(language)
+        logger.warning("Ollama request timed out")
+        return None
     except Exception as e:
         logger.error("Ollama error: %s", str(e))
-        return _get_fallback_response(language)
+        return None
 
 
 def _get_fallback_response(language: str) -> str:
-    """Fallback response when Ollama is unavailable."""
+    """Fallback response when no LLM provider is available."""
     fallbacks = {
         "te": (
             "🙏 క్షమించండి, ప్రస్తుతం AI సేవ అందుబాటులో లేదు.\n\n"
@@ -129,14 +177,32 @@ def _get_fallback_response(language: str) -> str:
     return fallbacks.get(language, fallbacks["en"])
 
 
-async def check_ollama_health() -> bool:
-    """Check if Ollama is running and the model is available."""
+async def check_llm_health() -> dict:
+    """Check which LLM providers are available."""
+    status = {"provider": settings.LLM_PROVIDER, "groq": False, "ollama": False}
+
+    # Check Groq
+    if settings.GROQ_API_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                )
+                status["groq"] = response.status_code == 200
+        except Exception:
+            pass
+
+    # Check Ollama
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
             if response.status_code == 200:
                 models = response.json().get("models", [])
-                return any(m["name"].startswith(settings.OLLAMA_MODEL.split(":")[0]) for m in models)
+                status["ollama"] = any(
+                    m["name"].startswith(settings.OLLAMA_MODEL.split(":")[0]) for m in models
+                )
     except Exception:
         pass
-    return False
+
+    return status

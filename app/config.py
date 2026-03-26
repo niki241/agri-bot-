@@ -13,12 +13,23 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str = "kisan_mitra_verify"
     WHATSAPP_API_VERSION: str = "v21.0"
 
-    # Ollama
+    # LLM Provider: "groq" (cloud, free) or "ollama" (local)
+    LLM_PROVIDER: str = "groq"
+
+    # Groq API (free, fast — used on Railway)
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
+
+    # Ollama (local dev fallback)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1:8b"
 
     # OpenWeatherMap
     OPENWEATHER_API_KEY: str = ""
+
+    # Razorpay (future premium)
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
 
     # App
     APP_ENV: str = "development"
